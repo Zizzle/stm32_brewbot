@@ -237,6 +237,8 @@ u16  Touch_GetPhyY(void)
 
 void vTouchTask( void *pvParameters ) 
 {
+    settings_load();
+
 	printf("Touch start\r\n");
 
 	Touch_Initializtion();

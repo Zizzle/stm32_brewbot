@@ -221,28 +221,22 @@ static void lcd_set_cursor(uint16_t Xpos,uint16_t Ypos)
 
 static void lcd_char_xy(unsigned short Xpos,unsigned short Ypos,unsigned char c,unsigned short charColor,unsigned short bkColor)
 {
-    unsigned short i=0;
-    unsigned short j=0;
-    const unsigned char *buffer = AsciiLib[(c - 32)] ;
-    unsigned char tmp_char=0;
-    for (i=0;i<16;i++)
-    {
+        unsigned short i=0;
+        unsigned short j=0;
+        const unsigned char *buffer = AsciiLib[(c - 32)] ;
+        unsigned char tmp_char=0;
+        for (i=0;i<16;i++)
+        {
+                lcd_set_cursor(Xpos,Ypos+i);
+                lcd_write_ram_prepare();
 
-	tmp_char=buffer[i];
-	for (j=0;j<8;j++)
-	{
-	    if ( (tmp_char >> 7-j) & 0x01)
-	    {
-		lcd_set_cursor(Xpos + j,Ypos+i);
-		lcd_write_ram_prepare();
-		write_data(charColor);
-	    }
-
-
-	    //uint16_t col = ( (tmp_char >> 7-j) & 0x01) ? charColor : bkColor;
-	    //write_data(col);
-	}
-    }
+                tmp_char=buffer[i];
+                for (j=0;j<8;j++)
+                {
+                        uint16_t col = ( (tmp_char >> 7-j) & 0x01) ? charColor : bkColor;
+                        write_data(col);
+                }
+        }
 }
 
  void lcd_DrawHLine(int x1, int x2, int col, int y )

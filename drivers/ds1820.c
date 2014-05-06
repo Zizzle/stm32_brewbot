@@ -210,7 +210,7 @@ static void ds1820_convert(void){
 }
 ////////////////////////////////////////////////////////////////////////////
 
-uint32_t ds1820_get_temp()
+uint32_t ds1820_get_temperature()
 {
 	return g_temperature;
 }
@@ -236,6 +236,29 @@ uint32_t ds1820_one_device_get_temp(void){
     ds1820_temperature = (ds1820_temperature * 100) -  25  + (100 * 16 - remain * 100) / (16);
     return ds1820_temperature;
 }
+
+uint32_t ds1820_blocking_sample()
+{
+	ds1820_convert_start();
+    vTaskDelay(1000); // wait for conversion
+    ds1820_convert_complete();
+	return g_temperature;
+}
+
+void ds1820_convert_start()
+{
+	taskENTER_CRITICAL();
+	ds1820_convert();
+	taskEXIT_CRITICAL();
+}
+void ds1820_convert_complete()
+{
+	taskENTER_CRITICAL();
+	g_temperature= ds1820_one_device_get_temp();
+	taskEXIT_CRITICAL();
+}
+
+
 ////////////////////////////////////////////////////////////////////////////
 // Interfacing Function
 ////////////////////////////////////////////////////////////////////////////
@@ -254,9 +277,7 @@ void vTaskDS1820Convert( void *pvParameters )
 
     for (;;)
     {
-        ds1820_convert();
-        vTaskDelay(2000); // wait for conversion
-		g_temperature= ds1820_one_device_get_temp();
+    	ds1820_blocking_sample();
     }
 }
 ////////////////////////////////////////////////////////////////////////////

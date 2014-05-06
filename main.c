@@ -28,6 +28,13 @@
 #include "ds1820.h"
 #include "serial.h"
 #include "pwm.h"
+#include "brew_task.h"
+#include "settings.h"
+#include "diagnostics.h"
+#include "brew.h"
+#include "hop_droppers.h"
+#include "level_probes.h"
+#include "heat.h"
 /*-----------------------------------------------------------*/
 
 /* The period of the system clock in nano seconds.  This is used to calculate
@@ -56,53 +63,20 @@ volatile int ITM_RxBuffer;
 
 /*-----------------------------------------------------------*/
 
-void item_1_callback(unsigned char button_down)
+void brewbotOutput(int peripheral, char on)
 {
-	if (button_down)
-		vLEDToggle(D4_PORT, D4_PIN);
+
 }
 
-void item_2_callback(unsigned char button_down)
-{
-	printf("Button %d\r\n", button_down);
-	vLEDSet(D4_PORT, D4_PIN, button_down);
-}
-
-void example_applet(int init)
-{
-	if (init)
-	{
-		lcd_printf(20, 1, 20, "Example Applet");
-		lcd_printf(34, 13, 4, "Back");
-	}
-}
-
-int example_applet_touch_handler(int xx, int yy)
-{
-	lcd_fill(0, 0, 150, 40, 0xFF);
-	lcd_printf(1,1, 20, "Touch %d,%d", xx, yy);
-
-	// return non-zero to exit applet
-	return xx > 200 && yy > 200;
-}
-
-struct menu frobnicate_menu[] =
-{
-	{"Item 1", NULL, NULL, item_1_callback, NULL},
-	{"Item 2", NULL, NULL, item_2_callback, NULL},
-	{"Item 3", NULL, NULL, item_1_callback, NULL},
-	{"Item 4", NULL, NULL, item_1_callback, NULL},
-	{"Item 5", NULL, NULL, item_1_callback, NULL},
-	{"Back",   NULL, NULL, NULL},
-    {NULL, NULL, NULL, NULL}
-};
 
 struct menu main_menu[] =
 {
-    {"Frobnicate",        frobnicate_menu, NULL, NULL},
-    {"Set temperature",   NULL,            NULL, NULL},
-    {"Applet",            NULL,            example_applet, NULL, example_applet_touch_handler},
-    {NULL, NULL, NULL, NULL}
+                {"Settings",          NULL,             settings_display,      NULL, settings_touch},
+                {"Brew Start",        NULL,             brew_start,            NULL, brew_touch},
+                {"Brew Resume",       NULL,             brew_resume,           NULL, brew_resume_touch},
+                //    {"Clean up",          foo_menu,      NULL,             NULL},
+                {"Diagnostics",       diag_menu,        NULL,      NULL, NULL},
+                {NULL, NULL, NULL, NULL}
 };
 
 /**
@@ -122,28 +96,17 @@ int main( void )
 
 	pwm_init();
 
+	heat_start_task();
+	hops_start_task();
+	brew_start_task();
+    level_probe_init();
+
     xTaskCreate( vTouchTask, 
                  ( signed portCHAR * ) "touch", 
                  configMINIMAL_STACK_SIZE +1000, 
                  NULL, 
                  tskIDLE_PRIORITY+2,
                  &xTouchTaskHandle );
-
-    xTaskCreate( vTaskDS1820Convert,
-                     ( signed portCHAR * ) "DS1820",
-                     configMINIMAL_STACK_SIZE +1000,
-                     NULL,
-                     tskIDLE_PRIORITY+2,
-                     &xDS1820Handle );
-
-    /* Create you application tasks if needed here
-    xTaskCreate( vKegTask, 
-                 ( signed portCHAR * ) "ADC", 
-                 configMINIMAL_STACK_SIZE +1000, 
-                 NULL, 
-                 tskIDLE_PRIORITY+2,
-                 &xAdcTaskHandle ); */
-    
        
     /* Start the scheduler. */
     vTaskStartScheduler();
