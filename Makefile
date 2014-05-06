@@ -1,23 +1,5 @@
-#******************************************************************************
-# @file      Makefile
-# @author    Stefano Oliveri (software@stf12.net)
-# @version   V2.0
-# @date      22/06/2009
-# @copy
-#
-# THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING USERS
-# WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-# TIME. AS A RESULT, STEFANO OLIVERI SHALL NOT BE HELD LIABLE FOR ANY
-# DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-# FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-# CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-#
-# <h2><center>&copy; COPYRIGHT 2009 Stefano Oliveri</center></h2>
-#******************************************************************************
 
-# Project name
-PROJECT_NAME=RTOSBrew
-
+PROJECT_NAME=stm32_brewbot
 
 # Directory definition.
 RTOS_SOURCE_DIR=./FreeRTOS/Source
@@ -37,7 +19,7 @@ LDSCRIPT=stm32_flash.ld
 
 
 # should use --gc-sections but the debugger does not seem to be able to cope with the option.
-LINKER_FLAGS=-nostartfiles -Xlinker -o$(PROJECT_NAME).axf -Xlinker -M -Xlinker -Map=$(PROJECT_NAME).map -Xlinker --no-gc-sections
+LINKER_FLAGS=-nostartfiles -Xlinker -o$(OUTDIR)/$(PROJECT_NAME).axf -Xlinker -M -Xlinker -Map=$(OUTDIR)/$(PROJECT_NAME).map -Xlinker --no-gc-sections
 
 
 # Debugging format.
@@ -146,10 +128,10 @@ MSG_END = --------  end  --------
 
 all: begin gccversion $(OUTDIR)/$(PROJECT_NAME).bin end
 
-$(OUTDIR)/$(PROJECT_NAME).bin : $(PROJECT_NAME).axf Makefile
-	$(OBJCOPY) $(PROJECT_NAME).axf -O binary $(PROJECT_NAME).bin
+$(OUTDIR)/$(PROJECT_NAME).bin :  $(OUTDIR)/$(PROJECT_NAME).axf Makefile
+	$(OBJCOPY)  $(OUTDIR)/$(PROJECT_NAME).axf -O binary $(OUTDIR)/$(PROJECT_NAME).bin
 
-$(PROJECT_NAME).axf : $(OBJS) $(OUTDIR)/startup_stm32f10x.o Makefile
+$(OUTDIR)/$(PROJECT_NAME).axf : $(OBJS) $(OUTDIR)/startup_stm32f10x.o Makefile
 	$(CC) $(CFLAGS) $(OBJS) $(OUTDIR)/startup_stm32f10x.o $(LIBS) $(LINKER_FLAGS)
 
 
@@ -208,15 +190,7 @@ jtag: all
 	sleep 1
 	echo "stm32f1x mass_erase 0" | nc localhost 4444
 	sleep 1
-	echo "flash write_bank 0 Debug/stm32_freertos_example.bin 0" | nc localhost 4444
-	sleep 2
-	echo "reset halt" | nc localhost 4444
-
-oldjtag: all
-	echo "reset halt" | nc localhost 4444
-	echo "stm32f1x mass_erase 0" | nc localhost 4444
-	sleep 1
-	echo "flash write_bank 0 RTOSBrew.bin 0" | nc localhost 4444
+	echo "flash write_bank 0 Debug/stm32_brewbot.bin 0" | nc localhost 4444
 	sleep 2
 	echo "reset halt" | nc localhost 4444
 
