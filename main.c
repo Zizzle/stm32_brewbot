@@ -27,6 +27,7 @@
 #include "timer.h"
 #include "ds1820.h"
 #include "serial.h"
+#include "pwm.h"
 /*-----------------------------------------------------------*/
 
 /* The period of the system clock in nano seconds.  This is used to calculate
@@ -119,12 +120,21 @@ int main( void )
 
 	menu_set_root(main_menu);
 
+	pwm_init();
+
     xTaskCreate( vTouchTask, 
                  ( signed portCHAR * ) "touch", 
                  configMINIMAL_STACK_SIZE +1000, 
                  NULL, 
                  tskIDLE_PRIORITY+2,
                  &xTouchTaskHandle );
+
+    xTaskCreate( vTaskDS1820Convert,
+                     ( signed portCHAR * ) "DS1820",
+                     configMINIMAL_STACK_SIZE +1000,
+                     NULL,
+                     tskIDLE_PRIORITY+2,
+                     &xDS1820Handle );
 
     /* Create you application tasks if needed here
     xTaskCreate( vKegTask, 
@@ -224,11 +234,11 @@ static void prvSetupHardware( void )
 void vApplicationStackOverflowHook( xTaskHandle *pxTask, signed portCHAR *pcTaskName )
 {
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_7;
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init( GPIOC, &GPIO_InitStructure );
-    GPIO_WriteBit( GPIOC, GPIO_Pin_7, 1 );
+    GPIO_Init( GPIOB, &GPIO_InitStructure );
+    GPIO_WriteBit( GPIOB, GPIO_Pin_0, 1 );
     
     for( ;; );
 }

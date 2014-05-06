@@ -46,9 +46,6 @@
  */
 void vSetupTimerTest( void );
 
-/* Interrupt handler in which the jitter is measured. */
-void TIM2_IRQHandler( void );
-
 /* Stores the value of the maximum recorded jitter between interrupts. */
 volatile unsigned portSHORT usMaxJitter = 0;
 void vSetupTimerTest( void )

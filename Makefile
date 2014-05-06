@@ -74,6 +74,7 @@ SOURCE=	main.c \
 		stf_syscalls_minimal.c \
 		drivers/touch.c \
 		drivers/serial.c \
+		drivers/pwm.c \
 		drivers/adc.c \
 		drivers/leds.c \
 		menu.c \
