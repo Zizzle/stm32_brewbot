@@ -36,11 +36,6 @@ static int menu_touch_x;
 
 static unsigned start_time;
 
-static void menu_update_hilight(void)
-{
-
-}
-
 static void menu_run_callback(char init)
 {
     if (g_index > 0)

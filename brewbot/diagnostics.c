@@ -14,6 +14,7 @@
 #include "lcd.h"
 #include "brewbot.h"
 #include "heat.h"
+#include "hop_droppers.h"
 
 #define DIAG_LOG_DIR "/diags"
 
@@ -24,6 +25,8 @@ void diag_error_handler(brew_task_t *bt)
 {
 	lcd_printf(0,5, 19, "Error: %s", bt->error);
 }
+
+
 
 //----------------------------------------------------------------------------
 static void diag_heat(int initializing)
@@ -52,17 +55,9 @@ static void solenoid_init(int initializing)
 {
 	brewbotOutput(SOLENOID, OFF);
 }
-
-//----------------------------------------------------------------------------
-static void diag_levels(int initializing)
+static void pump_init(int initializing)
 {
-	if (initializing)
-	{
-	}
-	else
-	{
-		fill_stop();
-	}
+	brewbotOutput(PUMP, OFF);
 }
 
 static void stirrer_on(unsigned char button_down)
@@ -84,13 +79,28 @@ static void solenoid_on(unsigned char button_down)
 }
 static void solenoid_off(unsigned char button_down)
 {
-	if (button_down) brewbotOutput(SOLENOID, ON);
+	if (button_down) brewbotOutput(SOLENOID, OFF);
 }
 static void solenoid_pulse(unsigned char button_down)
 {
 	lcd_printf(20, 1, 10, "pulse %d", button_down);
 	brewbotOutput(SOLENOID, button_down);
 }
+
+static void pump_on(unsigned char button_down)
+{
+	if (button_down) brewbotOutput(PUMP, ON);
+}
+static void pump_off(unsigned char button_down)
+{
+	if (button_down) brewbotOutput(PUMP, OFF);
+}
+static void pump_pulse(unsigned char button_down)
+{
+	lcd_printf(20, 1, 10, "pulse %d", button_down);
+	brewbotOutput(PUMP, button_down);
+}
+
 
 static void hops_1(unsigned char button_down)
 {
@@ -168,6 +178,15 @@ struct menu solenoid_menu[] =
 		{NULL, NULL, NULL, NULL}
 };
 
+struct menu pump_menu[] =
+{
+		{"On",             NULL,              NULL,           pump_on,             		 NULL},
+		{"Off",            NULL,              NULL,           pump_off,            	     NULL},
+		{"Pulse",          NULL,              NULL,           pump_pulse,        	     NULL},
+		{"Back",           NULL,              NULL,           NULL,                      NULL},
+		{NULL, NULL, NULL, NULL}
+};
+
 struct menu hops_menu[] = 
 {
 		{"Drop hops 1",    NULL,              NULL,           hops_1,               NULL},
@@ -182,6 +201,7 @@ struct menu diag_menu[] =
 		{"Heat",           heat_menu,         diag_heat,      NULL},
 		{"Mash stirrer",   stirrer_menu,      diag_mash,      NULL},
 		{"Solenoid",       solenoid_menu,     solenoid_init,  NULL},
+		{"Pump",           pump_menu,         pump_init,      NULL},
 		{"Hops",           hops_menu,         NULL,           NULL},
 		{"Back",           NULL,              NULL,           NULL},
 		{NULL, NULL, NULL, NULL}

@@ -215,25 +215,29 @@ uint32_t ds1820_get_temperature()
 	return g_temperature;
 }
 
-uint32_t ds1820_one_device_get_temp(void){
+uint32_t ds1820_one_device_get_temp(void)
+{
     int ii;
     uint8_t sp[9]; //scratchpad
-    int16_t ds1820_temperature = 0;
+    int16_t ds1820_temperature = 15000;
 
-    ds1820_reset();
-    ds1820_write_byte(SKIP_ROM); 
-    ds1820_write_byte(READ_SCRATCHPAD);
-    for (ii = 0; ii < 9; ii++){
-        sp[ii] = ds1820_read_byte();
+    if (ds1820_reset() != PRESENCE_ERROR)
+    {
+    	ds1820_write_byte(SKIP_ROM);
+    	ds1820_write_byte(READ_SCRATCHPAD);
+    	for (ii = 0; ii < 9; ii++)
+    	{
+    		sp[ii] = ds1820_read_byte();
+    	}
+
+    	ds1820_reset();
+    	ds1820_temperature = sp[1] & 0x0f;
+    	ds1820_temperature <<= 8;
+    	ds1820_temperature |= sp[0];
+    	unsigned char remain = sp[6];
+    	ds1820_temperature >>= 1;
+    	ds1820_temperature = (ds1820_temperature * 100) -  25  + (100 * 16 - remain * 100) / (16);
     }
-
-    ds1820_reset();
-    ds1820_temperature = sp[1] & 0x0f;
-    ds1820_temperature <<= 8;
-    ds1820_temperature |= sp[0];
-    unsigned char remain = sp[6];
-    ds1820_temperature >>= 1;
-    ds1820_temperature = (ds1820_temperature * 100) -  25  + (100 * 16 - remain * 100) / (16);
     return ds1820_temperature;
 }
 

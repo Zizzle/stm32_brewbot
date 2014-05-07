@@ -5,9 +5,9 @@
 #include "semphr.h"
 #include "ds1820.h"
 #include "lcd.h"
+#include "level_probes.h"
 #include <stdio.h>
 #include "brew_task.h"
-#include "level_probes.h"
 
 static void display_status();
 
@@ -29,35 +29,28 @@ const char *heat_as_str(int temp)
 	return temp_as_str;
 }
 
-static void heat_log()
-{
-	/*
-	log_brew(&log_file, "%d,%s,%.1f,%d,%d\n",
-			brewTaskTick(&heat_task),
-			heat_as_str(ds1820_get_temperature()),
-			heat_target,
-			heat_target_reached,
-			heat_duty_cycle);
-			*/
-}
-
 static void allOff()
 {
-	brewbotOutput(SSR, OFF);
+	brewbotOutput(SSR, 0);
 }
 
 static void display_status()
 {
 	lcd_background(COL_BG_NORM);
-	lcd_printf(22, 5, 19, "Target %s hit %d", heat_as_str(heat_target), heat_target_reached);
+	lcd_printf(22, 5, 18, "Target %s hit %x", heat_as_str(heat_target), heat_target_reached);
 	lcd_printf(22, 6, 18, "Temp %s (%d%)",    heat_as_str(ds1820_get_temperature()), heat_duty_cycle);
-	lcd_printf(22, 7, 19, "Probe: %d %d",level_hit_heat(), level_probe_heat_adc());
-	heat_log();
+	lcd_printf(22, 7, 18, "M %d %d K %d %d",   level_mash_low(), level_mash_high(), level_hit_heat(), level_probe_heat_adc());
 }
 
 static void heat_keep_temperature()
 {
-	heat_readings[heat_reading_idx] = ds1820_get_temperature();
+	uint32_t reading = ds1820_get_temperature();
+
+	// ignore large readings - presence error
+	if (reading > 12000)
+		return;
+
+	heat_readings[heat_reading_idx] = reading;
 	if (++heat_reading_idx >= NUM_READINGS)
 	{
 		heat_reading_idx  = 0;
@@ -88,9 +81,7 @@ static uint8_t test_had_reached_target()
 static void _heat_start(struct brew_task *bt)
 {
 	allOff();
-
 	ds1820_blocking_sample();
-
 	// make sure we have consistent readings on the level probes
 	level_wait_for_steady_readings();
 }
@@ -98,29 +89,25 @@ static void _heat_start(struct brew_task *bt)
 static void heat_iteration(struct brew_task *bt)
 {
 	int ii = 0;
+	
 	display_status();
-
+	
 	ds1820_convert_start();
 
-	// 1 second delay, run heat according to the duty cycle
-	for (ii = 0; ii < 100; ii++)
+	if (ds1820_get_temperature() < heat_target &&
+			level_hit_heat() == 1) // check the element is covered
 	{
-		if (ds1820_get_temperature() < heat_target &&
-				ii <= heat_duty_cycle &&
-				level_hit_heat() == 1) // check the element is covered
-		{
-			brewbotOutput(SSR, ON);
-			lcd_printf(22, 8, 10, "Heat ON");
-		}
-		else
-		{
-			lcd_printf(22, 8, 10, "Heat OFF");
-			heat_target_reached = test_had_reached_target();
-			allOff();
-		}
-		vTaskDelay(10); // wait for the conversion to happen
+		brewbotOutput(SSR, heat_duty_cycle);
+		lcd_printf(22, 8, 10, "Heat ON");
 	}
-
+	else
+	{
+		allOff();
+		lcd_printf(22, 8, 10, "Heat OFF");
+	}
+	heat_target_reached = test_had_reached_target();
+	vTaskDelay(800); // wait for the conversion to happen
+	
 	ds1820_convert_complete();
 	heat_keep_temperature();
 }
@@ -148,8 +135,6 @@ void heat_start(void (*taskErrorHandler)(brew_task_t *), const char *log_dir, in
 void heat_stop()
 {
 	brewTaskStop(&heat_task);
-//	log_brew(&log_file, "%d,Stopped", brewTaskTick(&heat_task));
-//	log_close(&log_file);
 }
 
 char heat_task_is_running()
@@ -164,6 +149,8 @@ uint8_t heat_has_reached_target()
 
 void heat_set_target_temperature(uint16_t target)
 {
+	if (heat_target == target) return;
+
 	heat_target_reached = 0;
 	heat_target         = target;
 	display_status();
@@ -171,6 +158,8 @@ void heat_set_target_temperature(uint16_t target)
 
 void heat_set_dutycycle(int duty_cycle)
 {
+	if (duty_cycle == heat_duty_cycle) return;
+
 	heat_duty_cycle = duty_cycle;
 	display_status();
 }

@@ -63,12 +63,6 @@ volatile int ITM_RxBuffer;
 
 /*-----------------------------------------------------------*/
 
-void brewbotOutput(int peripheral, char on)
-{
-
-}
-
-
 struct menu main_menu[] =
 {
                 {"Settings",          NULL,             settings_display,      NULL, settings_touch},

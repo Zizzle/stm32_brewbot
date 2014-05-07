@@ -19,8 +19,8 @@
 #define SSR 0
 #define SOLENOID 1
 #define STIRRER 2
+#define PUMP 3
 
-void brewbotOutput(int peripheral, char on);
-
+void brewbotOutput(int peripheral, int on);
 
 #endif

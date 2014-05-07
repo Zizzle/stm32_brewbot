@@ -11,11 +11,11 @@
 #include "touch.h"
 #include "task.h"
 #include "speaker.h"
+#include "settings.h"
+#include "menu.h"
 
 #define CH_X  0xd0//0x90
 #define CH_Y  0x90//0xd0
-
-extern xQueueHandle xTPQueue;
 
 void SPI_CS(u8 a)
 {

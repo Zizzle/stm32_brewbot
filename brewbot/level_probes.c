@@ -15,6 +15,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "brewbot.h"
+#include "stm32f10x.h"
+
 
 //
 // Ok so the level probes sit in water in the pot.
@@ -115,4 +117,23 @@ void level_wait_for_steady_readings()
 		vTaskDelay(10);
 	while (level_hit_full() == -1)
 		vTaskDelay(10);
+}
+
+uint8_t level_mash_low()
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_1;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init( GPIOC, &GPIO_InitStructure );
+    return !GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1);
+}
+uint8_t level_mash_high()
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init( GPIOC, &GPIO_InitStructure );
+    return !GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_2);
 }

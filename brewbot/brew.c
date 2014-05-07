@@ -11,8 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
+
 #include "FreeRTOS.h"
-#include "stm32f10x.h"
 #include "task.h"
 #include "semphr.h"
 
@@ -24,9 +25,11 @@
 #include "settings.h"
 #include "heat.h"
 #include "brew_task.h"
-#include "brewbot.h"
-#include "button.h"
 #include "hop_droppers.h"
+#include "brewbot.h"
+#include "level_probes.h"
+#include "button.h"
+#include "logging.h"
 
 #define TICKS_PER_MINUTE (60 * configTICK_RATE_HZ)
 #define BREW_LOG_PATH "/brews"
@@ -39,6 +42,7 @@ struct brew_step
 	const char *name;
 	void (*method)(int);
 	int timeout;
+	struct button *buttons;
 };
 #define BREW_STEPS_TOTAL 10
 static struct brew_step g_steps[BREW_STEPS_TOTAL];
@@ -54,6 +58,7 @@ static struct state
 	long         total_runtime;  // seconds since the start of the brew
 	long         step_runtime;   // seconds since the start of the current step
 	uint8_t      hop_addition_done[MAX_HOP_ADDITIONS];
+	FIL          log_file;
 } g_state = { 0, 0, 0, 0};
 
 static struct button brew_buttons[] = 
@@ -83,13 +88,14 @@ static void brew_run_step()
 	lcd_fill(LCD_W / 2, LCD_H - 1 * HH - 1, 1, HH, 0xFFFF);
 	
 	button_paint(brew_buttons);		
+	if (g_steps[g_state.step].buttons)
+		button_paint(g_steps[g_state.step].buttons);
 	lcd_background(COL_BG_NORM);
 	lcd_printf(0, 2, 20, "%d.%s", g_state.step, g_steps[g_state.step].name);
 	lcd_release();
-
-	//log_brew(&g_state.log_file, "%.2d:%.2d Run step %d.%s\n",
-	//		g_state.total_runtime / 60, g_state.total_runtime % 60,
-	//		g_state.step, g_steps[g_state.step].name);
+	log_brew(&g_state.log_file, "%.2d:%.2d Run step %d.%s\n",
+			g_state.total_runtime / 60, g_state.total_runtime % 60,
+			g_state.step, g_steps[g_state.step].name);
 
 	g_steps[g_state.step].method(1);
 }
@@ -101,7 +107,7 @@ static void brew_next_step()
 		return;
 	}
 
-	//brewbotOutput(STIRRER, OFF);
+	brewbotOutput(STIRRER, OFF);
 
 	g_state.step++;
 	brew_run_step();
@@ -120,10 +126,13 @@ void brew_error_handler(brew_task_t *bt)
 	lcd_printf(0, 4, 18, "Error = %s", bt->error);
 	brew_task.error = "Failed";
 
+	log_brew(&g_state.log_file, "%.2d:%.2d Error %s task failed %s\n",
+			g_state.total_runtime / 60, g_state.total_runtime % 60,
+			bt->name, bt->error);
 // FIXME	audio_beep(1000, 1000);
 }
 
-// STEP 2
+// STEP 1
 void brew_fill_and_heat(int init)
 {
 	if (init)
@@ -131,24 +140,26 @@ void brew_fill_and_heat(int init)
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 		heat_set_target_temperature(g_settings.mash_target_temp);
 		heat_set_dutycycle(70);
-//		fill_start(brew_error_handler);
 	}
 	else brew_next_step_if(heat_has_reached_target());
 }
 
-// STEP 5
+// STEP 2
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
 	if (init)
 	{
-//		brewbotOutput(STIRRER, ON);
+		brewbotOutput(STIRRER, ON);
+		brewbotOutput(PUMP, ON);
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(g_settings.mash_target_temp);
-		heat_set_dutycycle(g_settings.mash_duty_cycle);
 	}
+	heat_set_target_temperature(g_settings.mash_target_temp);
+	heat_set_dutycycle(g_settings.mash_duty_cycle);
 
-//	brewbotOutput(STIRRER, heat_is_heating());
+	brewbotOutput(PUMP, level_mash_high() == 0 );
+
+	brewbotOutput(STIRRER, g_state.step_runtime < 1200);
 	lcd_printf(0, 1, 19, "%.2d:%.2d Elapsed", g_state.step_runtime / 60,
 			g_state.step_runtime % 60);
 	lcd_printf(0, 2, 19, "%.2d:%.2d Remaining", remain / 60, remain % 60);
@@ -156,7 +167,7 @@ void brew_mash(int init)
 	brew_next_step_if (g_state.step_runtime > g_settings.mash_time * 60);
 }
 
-// STEP 6
+// STEP 3
 void brew_mash_out(int init)
 {
 	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
@@ -164,10 +175,12 @@ void brew_mash_out(int init)
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(90.0f);
+		heat_set_target_temperature(9000);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
 	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time * 60);
+
+	brewbotOutput(PUMP, level_mash_high() == 0 );
 
 	lcd_printf(0, 1, 19, "%.2d:%.2d Elapsed", g_state.step_runtime / 60,
 			g_state.step_runtime % 60);
@@ -175,23 +188,29 @@ void brew_mash_out(int init)
 
 }
 
-// STEP 7
+// STEP 4
 void brew_to_boil(int init)
 {
+	brewbotOutput(PUMP, OFF );
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(90.0f);
+		heat_set_target_temperature(9000);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
 	else brew_next_step_if (heat_has_reached_target());
 }
 
-// STEP 9
+// STEP 5
 void brew_boil_hops(int init)
 {
 	int ii;
 	long remain = g_settings.boil_time * 60 - g_state.step_runtime;
+
+	if (!heat_task_is_running())
+		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
+	heat_set_target_temperature(10100);
+	heat_set_dutycycle(g_settings.boil_duty_cycle);
 
 	for (ii = 0; ii < HOP_DROPPER_NUM; ii++)
 	{
@@ -213,11 +232,11 @@ void brew_boil_hops(int init)
 		}
 	}
 	lcd_printf(0, 4, 19, "%.2d:%.2d Remaining", remain / 60, remain % 60);
-
+	
 	brew_next_step_if (remain <= 0);
 }
 
-// STEP 10
+// STEP 6
 void brew_finish(int init)
 {
 	static int beep_freq = 100;
@@ -234,14 +253,39 @@ void brew_finish(int init)
 	}
 }
 
+void brew_duty_plus(char button_down)
+{
+	if (button_down) return;
+	if (!strcmp(g_steps[g_state.step].name, "Mash"))
+		g_settings.mash_duty_cycle ++;
+	if (!strcmp(g_steps[g_state.step].name, "Boil & Hops"))
+		g_settings.boil_duty_cycle ++;
+}
+void brew_duty_minus(char button_down)
+{
+	if (button_down) return;
+	if (!strcmp(g_steps[g_state.step].name, "Mash"))
+		g_settings.mash_duty_cycle --;
+	if (!strcmp(g_steps[g_state.step].name, "Boil & Hops"))
+		g_settings.boil_duty_cycle --;
+}
+
+static struct button heat_buttons[] =
+{
+		{ 0,             LCD_H - 2 * HH - 1, LCD_W / 4,     HH, "+",    COL_BG_NORM, 0xFFFF, brew_duty_plus },
+		{ LCD_W / 4 + 1, LCD_H - 2 * HH - 1, LCD_W / 4 - 1, HH, "-",    COL_BG_NORM, 0xFFFF, brew_duty_minus },
+		{ 0, 0, 0, 0, NULL}		
+};
+
+
 static struct brew_step g_steps[BREW_STEPS_TOTAL] = 
 {
-		{"Fill & Heat",        brew_fill_and_heat,   0},
-		{"Mash",               brew_mash,            0},
-		{"Mash out",           brew_mash_out,        0},
-		{"Bring to boil",      brew_to_boil,         0},
-		{"Boil & Hops",        brew_boil_hops,       0},
-		{"Finish",             brew_finish,          0},
+		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
+		{"Mash",               brew_mash,            0, heat_buttons},
+		{"Mash out",           brew_mash_out,        0, NULL},
+		{"Bring to boil",      brew_to_boil,         0, heat_buttons},
+		{"Boil & Hops",        brew_boil_hops,       0, heat_buttons},
+		{"Finish",             brew_finish,          0, NULL},
 };
 
 void brew_start_cb(brew_task_t *bt)
@@ -269,14 +313,13 @@ void brew_stop_cb(brew_task_t *bt)
 {
 	// all off
 	heat_stop();
-//	brewbotOutput(STIRRER, OFF);
-//	log_close(&g_state.log_file);
+	brewbotOutput(STIRRER, OFF);
+	log_close(&g_state.log_file);
 }
 
 static void do_brew_start(int resume)
 {
-//	g_state.brew_number = log_find_max_number(BREW_LOG_PATH) + (resume == 0);
-//	log_open(BREW_LOG_PATH, g_state.brew_number, "brew_log.txt", &g_state.log_file);
+	g_state.brew_number = log_find_max_number(BREW_LOG_PATH) + (resume == 0);
 	brewTaskStart(&brew_task, NULL);
 }
 
@@ -299,7 +342,7 @@ void brew_start(int init)
 	}
 	else
 	{
-//		log_brew(&g_state.log_file, "%.2d:%.2d Brew stopped\n", g_state.total_runtime / 60, g_state.total_runtime % 60);
+		log_brew(&g_state.log_file, "%.2d:%.2d Brew stopped\n", g_state.total_runtime / 60, g_state.total_runtime % 60);
 		brewTaskStop(&brew_task);	
 	}  
 }
@@ -307,10 +350,12 @@ void brew_start(int init)
 int brew_touch(int xx, int yy)
 {
 	printf("TOUCH %d %d\r\n", xx, yy);
+	if (g_steps[g_state.step].buttons)
+		button_touch(g_steps[g_state.step].buttons, xx, yy);
 	return button_touch(brew_buttons, xx, yy);
 }
 
-
+//----------------------------------------------------------------------------------------
 void brew_resume_prev(char button_down)
 {
 	printf("PREV %d", button_down);
@@ -370,12 +415,16 @@ void brew_resume(int init)
 	}
 	else
 	{
-//		log_brew(&g_state.log_file, "%.2d:%.2d Brew stopped\n", g_state.total_runtime / 60, g_state.total_runtime % 60);
+		log_brew(&g_state.log_file, "%.2d:%.2d Brew stopped\n", g_state.total_runtime / 60, g_state.total_runtime % 60);
 		brewTaskStop(&brew_task);
 	}
 }
 
 int brew_resume_touch(int xx, int yy)
 {
+	if (brew_task.running)
+		return brew_touch(xx, yy);
+	
 	return button_touch(resume_buttons, xx, yy);
 }
+

@@ -17,4 +17,7 @@ int8_t  level_hit_heat();
 int8_t  level_hit_full();
 void level_wait_for_steady_readings();
 
+uint8_t level_mash_low();
+uint8_t level_mash_high();
+
 #endif
