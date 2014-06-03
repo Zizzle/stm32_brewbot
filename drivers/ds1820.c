@@ -38,25 +38,24 @@ static uint8_t ds1820_read_bit(void);
 static void ds1820_write_byte(uint8_t byte);
 static uint8_t ds1820_read_byte(void);
 static void ds1820_convert(void);
-static void delay_us(uint16_t count); 
 
 
 void DQ_OUT()
 {
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Pin =  DS1820_PIN;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
+    GPIO_Init(DS1820_PORT, &GPIO_InitStructure);
 }
 
 void DQ_IN()
 {
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Pin =  DS1820_PIN;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
+    GPIO_Init(DS1820_PORT, &GPIO_InitStructure);
 }
 
 
@@ -64,9 +63,20 @@ void DQ_IN()
 // Static Functions 
 ////////////////////////////////////////////////////////////////////////////
 
-static void delay_us(uint16_t count){ 
+static void delay_us(unsigned  i)
+{
+    unsigned n;
+    for(;i;i--)
+    {
+		for(n=0;n<7;n++)
+		{
+			asm("nop");
+		}
+    }
+	return;
+
     
-    uint16_t TIMCounter = count;
+    uint16_t TIMCounter = i;
     TIM_Cmd(TIM2, ENABLE);
     TIM_SetCounter(TIM2, TIMCounter);
     while (TIMCounter)
@@ -75,6 +85,21 @@ static void delay_us(uint16_t count){
     }
     TIM_Cmd(TIM2, DISABLE);
 }
+
+void ds1820_test()
+{
+	DQ_OUT();
+
+	while (1)
+	{
+		DQ_SET();
+		delay_us(1000);
+		DQ_RESET();
+		delay_us(1000);
+
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////
 static void ds1820_init(void)
 {
@@ -219,7 +244,7 @@ uint32_t ds1820_one_device_get_temp(void)
 {
     int ii;
     uint8_t sp[9]; //scratchpad
-    int16_t ds1820_temperature = 15000;
+    int16_t ds1820_temperature = 1500;
 
     if (ds1820_reset() != PRESENCE_ERROR)
     {

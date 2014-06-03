@@ -16,10 +16,14 @@
 #define ON 1
 #define OFF 0
 
+#define OPEN 1
+#define CLOSED 0
+
 #define SSR 0
 #define SOLENOID 1
 #define STIRRER 2
 #define PUMP 3
+#define VALVE 4
 
 void brewbotOutput(int peripheral, int on);
 

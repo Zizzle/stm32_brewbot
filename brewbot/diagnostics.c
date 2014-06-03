@@ -59,6 +59,10 @@ static void pump_init(int initializing)
 {
 	brewbotOutput(PUMP, OFF);
 }
+static void valve_init(int initializing)
+{
+	brewbotOutput(VALVE, OFF);
+}
 
 static void stirrer_on(unsigned char button_down)
 {
@@ -101,6 +105,14 @@ static void pump_pulse(unsigned char button_down)
 	brewbotOutput(PUMP, button_down);
 }
 
+static void valve_on(unsigned char button_down)
+{
+	if (button_down) brewbotOutput(VALVE, ON);
+}
+static void valve_off(unsigned char button_down)
+{
+	if (button_down) brewbotOutput(VALVE, OFF);
+}
 
 static void hops_1(unsigned char button_down)
 {
@@ -187,6 +199,14 @@ struct menu pump_menu[] =
 		{NULL, NULL, NULL, NULL}
 };
 
+struct menu valve_menu[] =
+{
+		{"On",             NULL,              NULL,           valve_on,            		 NULL},
+		{"Off",            NULL,              NULL,           valve_off,           	     NULL},
+		{"Back",           NULL,              NULL,           NULL,                      NULL},
+		{NULL, NULL, NULL, NULL}
+};
+
 struct menu hops_menu[] = 
 {
 		{"Drop hops 1",    NULL,              NULL,           hops_1,               NULL},
@@ -202,6 +222,7 @@ struct menu diag_menu[] =
 		{"Mash stirrer",   stirrer_menu,      diag_mash,      NULL},
 		{"Solenoid",       solenoid_menu,     solenoid_init,  NULL},
 		{"Pump",           pump_menu,         pump_init,      NULL},
+		{"Valve",          valve_menu,        valve_init,      NULL},
 		{"Hops",           hops_menu,         NULL,           NULL},
 		{"Back",           NULL,              NULL,           NULL},
 		{NULL, NULL, NULL, NULL}

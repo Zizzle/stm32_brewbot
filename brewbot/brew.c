@@ -47,6 +47,10 @@ struct brew_step
 #define BREW_STEPS_TOTAL 10
 static struct brew_step g_steps[BREW_STEPS_TOTAL];
 
+#define MASH_FILLING 0
+#define MASH_STIRRING 1
+#define MASH_DRAINING 2
+
 static struct state
 {
 	int          brew_number;
@@ -57,6 +61,9 @@ static struct state
 	portTickType step_start_tick;
 	long         total_runtime;  // seconds since the start of the brew
 	long         step_runtime;   // seconds since the start of the current step
+
+	int          mash_state;
+	long         stir_start;
 	uint8_t      hop_addition_done[MAX_HOP_ADDITIONS];
 	FIL          log_file;
 } g_state = { 0, 0, 0, 0};
@@ -145,21 +152,103 @@ void brew_fill_and_heat(int init)
 }
 
 // STEP 2
-void brew_mash(int init)
+void brew_mash_in(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
 	if (init)
 	{
-		brewbotOutput(STIRRER, ON);
+		brewbotOutput(STIRRER, OFF);
 		brewbotOutput(PUMP, ON);
+		brewbotOutput(VALVE, CLOSED);
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 	}
 	heat_set_target_temperature(g_settings.mash_target_temp);
 	heat_set_dutycycle(g_settings.mash_duty_cycle);
 
-	brewbotOutput(PUMP, level_mash_high() == 0 );
+	brew_next_step_if (level_mash_high());
+}
 
-	brewbotOutput(STIRRER, g_state.step_runtime < 1200);
+
+// STEP 3
+void brew_mash(int init)
+{
+	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
+
+	long stir_portion = 3 * g_settings.mash_time / 4;
+
+	if (init)
+	{
+		g_state.mash_state = MASH_FILLING;
+		brewbotOutput(PUMP, OFF);
+		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
+	}
+	else
+	{
+		brewbotOutput(VALVE, OPEN);
+		brewbotOutput(PUMP, ON);
+	}
+#if 0
+	else
+	{
+		if (g_state.step_runtime < stir_portion * 60 || g_state.mash_state == MASH_STIRRING)
+		{
+			if (g_state.mash_state == MASH_STIRRING)
+			{
+				if (g_state.step_runtime - g_state.stir_start > 120)
+				{
+					g_state.mash_state = MASH_DRAINING;
+					brewbotOutput(PUMP, OFF);
+					brewbotOutput(STIRRER, OFF);
+					brewbotOutput(VALVE, OPEN);
+				}
+			}
+			else if (g_state.mash_state == MASH_DRAINING)
+			{
+				if (!level_mash_low())
+				{
+					g_state.mash_state = MASH_FILLING;
+					brewbotOutput(PUMP, ON);
+					brewbotOutput(VALVE, OFF);
+				}
+			}
+			else if (g_state.mash_state == MASH_FILLING)
+			{
+				if (level_mash_high())
+				{
+					g_state.mash_state = MASH_STIRRING;
+					g_state.stir_start = g_state.step_runtime;
+					brewbotOutput(PUMP, OFF);
+					brewbotOutput(STIRRER, ON);
+					brewbotOutput(VALVE, OFF);
+				}
+			}
+		}
+		else
+		{
+			if (g_state.mash_state == MASH_DRAINING)
+			{
+				if (!level_mash_low())
+				{
+					g_state.mash_state = MASH_FILLING;
+					brewbotOutput(PUMP, ON);
+					brewbotOutput(VALVE, OFF);
+				}
+			}
+			else if (g_state.mash_state == MASH_FILLING)
+			{
+				if (level_mash_high())
+				{
+					g_state.mash_state = MASH_DRAINING;
+					brewbotOutput(PUMP, ON);
+					brewbotOutput(VALVE, ON);
+				}
+			}
+		}
+	}
+#endif
+	heat_set_target_temperature(g_settings.mash_target_temp);
+	heat_set_dutycycle(g_settings.mash_duty_cycle);
+
 	lcd_printf(0, 1, 19, "%.2d:%.2d Elapsed", g_state.step_runtime / 60,
 			g_state.step_runtime % 60);
 	lcd_printf(0, 2, 19, "%.2d:%.2d Remaining", remain / 60, remain % 60);
@@ -167,20 +256,34 @@ void brew_mash(int init)
 	brew_next_step_if (g_state.step_runtime > g_settings.mash_time * 60);
 }
 
-// STEP 3
+// STEP 4
 void brew_mash_out(int init)
 {
-	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
-
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(9000);
+		heat_set_target_temperature(7500);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
-	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time * 60);
+	else brew_next_step_if (heat_has_reached_target());
 
-	brewbotOutput(PUMP, level_mash_high() == 0 );
+	brewbotOutput(PUMP, OFF);
+	brewbotOutput(VALVE, OPEN);
+}
+
+// STEP 5
+void brew_mash_drain(int init)
+{
+	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
+	if (init)
+	{
+		brewbotOutput(PUMP, OFF);
+		brewbotOutput(VALVE, OPEN);
+		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
+		heat_set_target_temperature(7500);
+		heat_set_dutycycle(g_settings.boil_duty_cycle);
+	}
+	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time);
 
 	lcd_printf(0, 1, 19, "%.2d:%.2d Elapsed", g_state.step_runtime / 60,
 			g_state.step_runtime % 60);
@@ -188,7 +291,7 @@ void brew_mash_out(int init)
 
 }
 
-// STEP 4
+// STEP 6
 void brew_to_boil(int init)
 {
 	brewbotOutput(PUMP, OFF );
@@ -201,7 +304,7 @@ void brew_to_boil(int init)
 	else brew_next_step_if (heat_has_reached_target());
 }
 
-// STEP 5
+// STEP 7
 void brew_boil_hops(int init)
 {
 	int ii;
@@ -236,7 +339,7 @@ void brew_boil_hops(int init)
 	brew_next_step_if (remain <= 0);
 }
 
-// STEP 6
+// STEP 8
 void brew_finish(int init)
 {
 	static int beep_freq = 100;
@@ -281,8 +384,10 @@ static struct button heat_buttons[] =
 static struct brew_step g_steps[BREW_STEPS_TOTAL] = 
 {
 		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
+		{"Mash In",            brew_mash_in,         0, heat_buttons},
 		{"Mash",               brew_mash,            0, heat_buttons},
 		{"Mash out",           brew_mash_out,        0, NULL},
+		{"Mash drain",         brew_mash_drain,      0, NULL},
 		{"Bring to boil",      brew_to_boil,         0, heat_buttons},
 		{"Boil & Hops",        brew_boil_hops,       0, heat_buttons},
 		{"Finish",             brew_finish,          0, NULL},
@@ -313,7 +418,9 @@ void brew_stop_cb(brew_task_t *bt)
 {
 	// all off
 	heat_stop();
+	brewbotOutput(PUMP, OFF);
 	brewbotOutput(STIRRER, OFF);
+	brewbotOutput(VALVE, CLOSED);
 	log_close(&g_state.log_file);
 }
 

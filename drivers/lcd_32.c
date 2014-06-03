@@ -391,6 +391,8 @@ void lcd_init(void)
 
     lcd_port_init(); //initialise IO Registers
 
+    Delay(100);
+
     /* deviceid check */
     deviceid = read_reg(0x00);
     LCD_Initializtion2(deviceid);
@@ -417,9 +419,9 @@ static void LCD_FSMCConfig(void)
     FSMC_NORSRAMTimingInitTypeDef  p;
 
     /*-- FSMC Configuration ----------------------------------------------*/
-    p.FSMC_AddressSetupTime = 1;             /* ��ַ����ʱ��  */
-    p.FSMC_AddressHoldTime = 0;              /* ��ַ����ʱ��  */
-    p.FSMC_DataSetupTime = 2;                /* ��ݽ���ʱ��  */
+    p.FSMC_AddressSetupTime = 5;             /* ��ַ����ʱ��  */
+    p.FSMC_AddressHoldTime = 5;              /* ��ַ����ʱ��  */
+    p.FSMC_DataSetupTime = 5;                /* ��ݽ���ʱ��  */
     p.FSMC_BusTurnAroundDuration = 0;        /* ���߷�תʱ��  */
     p.FSMC_CLKDivision = 0;                  /* ʱ�ӷ�Ƶ      */
     p.FSMC_DataLatency = 0;                  /* ��ݱ���ʱ��  */

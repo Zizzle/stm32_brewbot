@@ -126,7 +126,7 @@ uint8_t level_mash_low()
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init( GPIOC, &GPIO_InitStructure );
-    return !GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1);
+    return GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1);
 }
 uint8_t level_mash_high()
 {
@@ -135,5 +135,5 @@ uint8_t level_mash_high()
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init( GPIOC, &GPIO_InitStructure );
-    return !GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_2);
+    return GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_2);
 }

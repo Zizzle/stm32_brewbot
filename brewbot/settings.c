@@ -64,9 +64,9 @@ void settings_load()
 		g_settings.magic             = SETTINGS_MAGIC;
 		g_settings.mash_time         = 60;
 		g_settings.mash_target_temp  = 6600;
-		g_settings.mash_out_time     = 5;
+		g_settings.mash_out_time     = 15;
 		g_settings.boil_time         = 60;
-		g_settings.mash_duty_cycle   = 10;
+		g_settings.mash_duty_cycle   = 30;
 		g_settings.boil_duty_cycle   = 50;
 		g_settings.hop_addition[0]   = 60;
 		g_settings.hop_addition[1]   = 40;

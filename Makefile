@@ -27,13 +27,7 @@ LINKER_FLAGS=-nostartfiles -Xlinker -o$(OUTDIR)/$(PROJECT_NAME).axf -Xlinker -M 
 #DEBUG = dwarf-2
 DEBUG= gdb
 
-# Optimization level, can be [0, 1, 2, 3, s].
-# 0 = turn off optimization. s = optimize for size.
-# (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-#OPT = s
-#OPT = 2
-#OPT = 3
-OPT = 0
+OPT = 1
 
 
 # Compiler flag to set the C Standard level.
@@ -55,6 +49,7 @@ CFLAGS=-g$(DEBUG)\
 		-I drivers \
 		-I $(ST_LIB_DIR)/inc \
 		-I $(ARM_CMSIS_DIR)\
+		-I brewbot \
 	       	-D STM32F10X_HD \
 		-D USE_STDPERIPH_DRIVER \
 		-D VECT_TAB_FLASH \
@@ -77,10 +72,21 @@ SOURCE=	main.c \
 		drivers/pwm.c \
 		drivers/adc.c \
 		drivers/leds.c \
+		drivers/flash.c \
 		menu.c \
 		drivers/speaker.c \
 		drivers/timer.c \
-		drivers/ds1820.c
+		drivers/ds1820.c \
+		brewbot/brew.c \
+		brewbot/brew_task.c \
+		brewbot/brewbot.c \
+		brewbot/button.c \
+		brewbot/diagnostics.c \
+		brewbot/heat.c \
+		brewbot/hop_droppers.c \
+		brewbot/level_probes.c \
+		brewbot/logging.c \
+		brewbot/settings.c
 
 # ST Library source files.
 ST_LIB_SOURCE= \
