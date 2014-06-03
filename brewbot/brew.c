@@ -145,7 +145,7 @@ void brew_fill_and_heat(int init)
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(g_settings.mash_target_temp);
+		heat_set_target_temperature(g_settings.mash_target_temp - 500);
 		heat_set_dutycycle(70);
 	}
 	else brew_next_step_if(heat_has_reached_target());
@@ -154,7 +154,6 @@ void brew_fill_and_heat(int init)
 // STEP 2
 void brew_mash_in(int init)
 {
-	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
 	if (init)
 	{
 		brewbotOutput(STIRRER, OFF);
@@ -168,8 +167,24 @@ void brew_mash_in(int init)
 	brew_next_step_if (level_mash_high());
 }
 
-
 // STEP 3
+void brew_mash_stir(int init)
+{
+	if (init)
+	{
+		brewbotOutput(PUMP, OFF);
+		brewbotOutput(STIRRER, ON);
+		brewbotOutput(VALVE, CLOSED);
+		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
+	}
+	heat_set_target_temperature(g_settings.mash_target_temp);
+	heat_set_dutycycle(g_settings.mash_duty_cycle);
+
+	brew_next_step_if (g_state.step_runtime > 60);
+}
+
+
+// STEP 4
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
@@ -179,58 +194,18 @@ void brew_mash(int init)
 	if (init)
 	{
 		g_state.mash_state = MASH_FILLING;
-		brewbotOutput(PUMP, OFF);
+		brewbotOutput(STIRRER, OFF);
+		brewbotOutput(PUMP, ON);
+		brewbotOutput(VALVE, CLOSED);
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 	}
 	else
 	{
-		brewbotOutput(VALVE, OPEN);
-		brewbotOutput(PUMP, ON);
-	}
-#if 0
-	else
-	{
-		if (g_state.step_runtime < stir_portion * 60 || g_state.mash_state == MASH_STIRRING)
-		{
-			if (g_state.mash_state == MASH_STIRRING)
-			{
-				if (g_state.step_runtime - g_state.stir_start > 120)
-				{
-					g_state.mash_state = MASH_DRAINING;
-					brewbotOutput(PUMP, OFF);
-					brewbotOutput(STIRRER, OFF);
-					brewbotOutput(VALVE, OPEN);
-				}
-			}
-			else if (g_state.mash_state == MASH_DRAINING)
-			{
-				if (!level_mash_low())
-				{
-					g_state.mash_state = MASH_FILLING;
-					brewbotOutput(PUMP, ON);
-					brewbotOutput(VALVE, OFF);
-				}
-			}
-			else if (g_state.mash_state == MASH_FILLING)
-			{
-				if (level_mash_high())
-				{
-					g_state.mash_state = MASH_STIRRING;
-					g_state.stir_start = g_state.step_runtime;
-					brewbotOutput(PUMP, OFF);
-					brewbotOutput(STIRRER, ON);
-					brewbotOutput(VALVE, OFF);
-				}
-			}
-		}
-		else
-		{
 			if (g_state.mash_state == MASH_DRAINING)
 			{
 				if (!level_mash_low())
 				{
 					g_state.mash_state = MASH_FILLING;
-					brewbotOutput(PUMP, ON);
 					brewbotOutput(VALVE, OFF);
 				}
 			}
@@ -239,13 +214,11 @@ void brew_mash(int init)
 				if (level_mash_high())
 				{
 					g_state.mash_state = MASH_DRAINING;
-					brewbotOutput(PUMP, ON);
 					brewbotOutput(VALVE, ON);
 				}
 			}
-		}
 	}
-#endif
+
 	heat_set_target_temperature(g_settings.mash_target_temp);
 	heat_set_dutycycle(g_settings.mash_duty_cycle);
 
@@ -256,7 +229,7 @@ void brew_mash(int init)
 	brew_next_step_if (g_state.step_runtime > g_settings.mash_time * 60);
 }
 
-// STEP 4
+// STEP 5
 void brew_mash_out(int init)
 {
 	if (init)
@@ -271,7 +244,7 @@ void brew_mash_out(int init)
 	brewbotOutput(VALVE, OPEN);
 }
 
-// STEP 5
+// STEP 6
 void brew_mash_drain(int init)
 {
 	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
@@ -291,20 +264,21 @@ void brew_mash_drain(int init)
 
 }
 
-// STEP 6
+// STEP 7
 void brew_to_boil(int init)
 {
 	brewbotOutput(PUMP, OFF );
+	brewbotOutput(VALVE, OPEN);
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(9000);
+		heat_set_target_temperature(9200);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
 	else brew_next_step_if (heat_has_reached_target());
 }
 
-// STEP 7
+// STEP 8
 void brew_boil_hops(int init)
 {
 	int ii;
@@ -336,10 +310,13 @@ void brew_boil_hops(int init)
 	}
 	lcd_printf(0, 4, 19, "%.2d:%.2d Remaining", remain / 60, remain % 60);
 	
+	if (remain < 600)
+		brewbotOutput(VALVE, CLOSED);
+
 	brew_next_step_if (remain <= 0);
 }
 
-// STEP 8
+// STEP 9
 void brew_finish(int init)
 {
 	static int beep_freq = 100;
@@ -385,6 +362,7 @@ static struct brew_step g_steps[BREW_STEPS_TOTAL] =
 {
 		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
 		{"Mash In",            brew_mash_in,         0, heat_buttons},
+		{"Mash Stir",          brew_mash_stir,         0, heat_buttons},
 		{"Mash",               brew_mash,            0, heat_buttons},
 		{"Mash out",           brew_mash_out,        0, NULL},
 		{"Mash drain",         brew_mash_drain,      0, NULL},
