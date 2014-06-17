@@ -84,6 +84,7 @@ static const char *brew_step_name(unsigned char step)
 static void brew_run_step()
 {
 	g_state.step_start_tick = xTaskGetTickCount();
+	g_state.step_runtime = 0; // iterate will update this
 
 	lcd_lock();
     lcd_fill(0, 0, LCD_W, CRUMB_H, 0x0);
