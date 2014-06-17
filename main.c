@@ -35,6 +35,7 @@
 #include "hop_droppers.h"
 #include "level_probes.h"
 #include "heat.h"
+#include "brewbot.h"
 /*-----------------------------------------------------------*/
 
 /* The period of the system clock in nano seconds.  This is used to calculate
@@ -79,12 +80,15 @@ struct menu main_menu[] =
 int main( void )
 {
     prvSetupHardware();// set up peripherals etc 
+
+    brewbotOutput(STIRRER, OFF);
+    brewbotOutput(PUMP, OFF);
+
     USARTInit(USART_PARAMS1);
 
     printf("Hello!\r\n");
 
-    lcd_init();          
-    vLEDInit();
+    lcd_init();
 
 	menu_set_root(main_menu);
 
@@ -102,6 +106,8 @@ int main( void )
                  tskIDLE_PRIORITY+2,
                  &xTouchTaskHandle );
        
+    hops_reset();
+
     /* Start the scheduler. */
     vTaskStartScheduler();
     

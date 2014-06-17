@@ -146,7 +146,8 @@ void brew_fill_and_heat(int init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 		heat_set_target_temperature(g_settings.mash_target_temp - 500);
-		heat_set_dutycycle(70);
+		heat_set_dutycycle(90);
+	    hops_reset();
 	}
 	else brew_next_step_if(heat_has_reached_target());
 }
@@ -240,7 +241,7 @@ void brew_mash_out(int init)
 	}
 	else brew_next_step_if (heat_has_reached_target());
 
-	brewbotOutput(PUMP, OFF);
+	brewbotOutput(PUMP, ON);
 	brewbotOutput(VALVE, OPEN);
 }
 

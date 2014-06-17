@@ -25,6 +25,14 @@
 #define PUMP 3
 #define VALVE 4
 
+#define HOPS1 5
+#define HOPS2 6
+#define HOPS3 7
+
+// hops can be off (no pwm) or up or down
+#define HOPS_UP   1
+#define HOPS_DOWN 2
+
 void brewbotOutput(int peripheral, int on);
 
 #endif
