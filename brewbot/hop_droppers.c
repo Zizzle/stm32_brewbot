@@ -22,13 +22,12 @@ static void hops_iteration(struct brew_task *bt)
 		vTaskDelay(1500); // wait for power up
 		brewbotOutput(HOPS1, HOPS_UP);
 		vTaskDelay(1500); // wait for the servo to move
+		brewbotOutput(HOPS1, OFF);
 		brewbotOutput(HOPS2, HOPS_UP);
 		vTaskDelay(1500); // wait for the servo to move
+		brewbotOutput(HOPS2, OFF);
 		brewbotOutput(HOPS3, HOPS_UP);
 		vTaskDelay(1500); // wait for the servo to move
-
-		brewbotOutput(HOPS1, OFF);
-		brewbotOutput(HOPS2, OFF);
 		brewbotOutput(HOPS3, OFF);
 	}
 	else
@@ -38,6 +37,8 @@ static void hops_iteration(struct brew_task *bt)
 		vTaskDelay(2000); // wait for the current drop to finish to happen
 		brewbotOutput(HOPS1 + servo, HOPS_UP);
 		vTaskDelay(1500); // wait for the servo to move
+		brewbotOutput(HOPS1 + servo, HOPS_DOWN);
+		vTaskDelay(2000); // wait for the current drop to finish to happen
 		brewbotOutput(HOPS1 + servo, OFF); // disable PWM
 	}
 	bt->running = 0;

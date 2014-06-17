@@ -322,9 +322,11 @@ void brew_finish(int init)
 {
 	static int beep_freq = 100;
 
+	lcd_printf(0, 4, 19, "%.2d:%.2d Since finish", g_state.step_runtime / 60, g_state.step_runtime % 60);
 	if (init)
 	{
 		heat_stop();
+		hops_reset();
 	}
 	else
 	{
