@@ -17,7 +17,7 @@
 #include "flash.h"
 
 #define SETTINGS_FLASH_ADDR 0
-#define SETTINGS_DISPLAY_SIZE 9
+#define SETTINGS_DISPLAY_SIZE 10
 
 struct settings g_settings;
 
@@ -34,6 +34,7 @@ struct settings_display
 
 static struct settings_display settings_display_list[] = 
 {
+		{" Delay start %d hours", UINT8,  &g_settings.delay_start_hours, "delay_start_hours"},
 		{" Mash target %s C",   TEMP,  &g_settings.mash_target_temp, "mash_target_temp"},
 		{" Mash time   %d min", UINT8, &g_settings.mash_time,        "mash_time"},
 		{" Mash duty   %d %%",  UINT8, &g_settings.mash_duty_cycle,  "mash_duty_cycle"},
@@ -73,6 +74,7 @@ void settings_load()
 		g_settings.hop_addition[2]   = 0;
 		g_settings.hop_addition[3]   = 0;
 		g_settings.hop_addition[4]   = 0;
+		g_settings.delay_start_hours = 0;
 	}	
 	printf("ok\r\n");
 }
@@ -93,15 +95,15 @@ static void settings_display_menu()
 		struct settings_display *disp = &settings_display_list[ii + settings_offset];
 		if (disp->type == TEMP)
 		{
-			lcd_printf(0, 2 + ii, 19, disp->fmt, heat_as_str(*((uint16_t *)disp->value)));
+			lcd_printf(0, 1 + ii, 19, disp->fmt, heat_as_str(*((uint16_t *)disp->value)));
 		}
 		else if (disp->type == UINT8)
 		{
-			lcd_printf(0, 2 + ii, 19, disp->fmt, *((uint8_t *)disp->value));
+			lcd_printf(0, 1 + ii, 19, disp->fmt, *((uint8_t *)disp->value));
 		}
 		if (ii + settings_offset == settings_cursor)
 		{
-			lcd_text(0, 2 + ii, ">");
+			lcd_text(0, 1 + ii, ">");
 		}
 	}
 }

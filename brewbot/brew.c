@@ -99,7 +99,7 @@ static void brew_run_step()
 	if (g_steps[g_state.step].buttons)
 		button_paint(g_steps[g_state.step].buttons);
 	lcd_background(COL_BG_NORM);
-	lcd_printf(0, 2, 20, "%d.%s", g_state.step, g_steps[g_state.step].name);
+	lcd_printf(17, 0, 20, "%d.%s", g_state.step, g_steps[g_state.step].name);
 	lcd_release();
 	log_brew(&g_state.log_file, "%.2d:%.2d Run step %d.%s\n",
 			g_state.total_runtime / 60, g_state.total_runtime % 60,
@@ -141,6 +141,25 @@ void brew_error_handler(brew_task_t *bt)
 }
 
 // STEP 1
+void brew_delay_start(int init)
+{
+	if (g_settings.delay_start_hours == 0)
+		brew_next_step();
+
+	int remain = g_settings.delay_start_hours * 3600 - g_state.step_runtime;
+	if (init)
+	{
+		lcd_printf(0, 3, 36, "Delayed start: 00:00:00 remaining");
+		return;
+	}
+
+	lcd_printf(15, 3, 8, "%.2d:%.2d:%.2d", remain / 3600, (remain % 3600) / 60, remain % 60);
+	vTaskDelay(300);
+
+	brew_next_step_if(g_state.step_runtime > g_settings.delay_start_hours * 3600);
+}
+
+// STEP 1
 void brew_fill_and_heat(int init)
 {
 	if (init)
@@ -174,9 +193,10 @@ void brew_mash_stir(int init)
 {
 	if (init)
 	{
-		brewbotOutput(PUMP, OFF);
-		brewbotOutput(STIRRER, ON);
 		brewbotOutput(VALVE, CLOSED);
+		brewbotOutput(PUMP, OFF);
+		vTaskDelay(500);
+		brewbotOutput(STIRRER, ON);
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 	}
 	heat_set_target_temperature(g_settings.mash_target_temp);
@@ -364,6 +384,7 @@ static struct button heat_buttons[] =
 
 static struct brew_step g_steps[BREW_STEPS_TOTAL] = 
 {
+		{"Delayed Start",      brew_delay_start,     0, NULL},
 		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
 		{"Mash In",            brew_mash_in,         0, heat_buttons},
 		{"Mash Stir",          brew_mash_stir,         0, heat_buttons},
@@ -427,6 +448,7 @@ void brew_start(int init)
 	{
 		g_state.brew_start_tick = xTaskGetTickCount();
 		g_state.step = 0;
+		g_state.step_runtime = 0;
 		do_brew_start(0);
 	}
 	else
