@@ -210,8 +210,7 @@ void brew_mash_stir(int init)
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
-
-	long stir_portion = g_settings.mash_time / 2;
+	long stir_portion = g_settings.mash_time * 60 / 3;
 
 	if (init)
 	{
@@ -229,13 +228,35 @@ void brew_mash(int init)
 				{
 					g_state.mash_state = MASH_FILLING;
 					brewbotOutput(VALVE, OFF);
+					brewbotOutput(STIRRER, OFF);
 				}
 			}
 			else if (g_state.mash_state == MASH_FILLING)
 			{
 				if (level_mash_high())
 				{
+					if (g_state.step_runtime < stir_portion)
+					{
+						brewbotOutput(PUMP, OFF);
+						brewbotOutput(STIRRER, ON);
+						g_state.mash_state = MASH_STIRRING;
+						g_state.stir_start = g_state.step_runtime;
+					}
+					else
+					{
+						g_state.mash_state = MASH_DRAINING;
+						brewbotOutput(VALVE, ON);
+						brewbotOutput(STIRRER, OFF);
+					}
+				}
+			}
+			else if (g_state.mash_state == MASH_STIRRING)
+			{
+				if (g_state.step_runtime - g_state.stir_start > 20)
+				{
 					g_state.mash_state = MASH_DRAINING;
+					brewbotOutput(STIRRER, OFF);
+					brewbotOutput(PUMP, ON);
 					brewbotOutput(VALVE, ON);
 				}
 			}
@@ -262,6 +283,7 @@ void brew_mash_out(int init)
 	}
 	else brew_next_step_if (heat_has_reached_target());
 
+	brewbotOutput(STIRRER, OFF);
 	brewbotOutput(PUMP, ON);
 	brewbotOutput(VALVE, OPEN);
 }
@@ -272,6 +294,7 @@ void brew_mash_drain(int init)
 	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
 	brewbotOutput(PUMP, OFF);
 	brewbotOutput(VALVE, OPEN);
+	brewbotOutput(STIRRER, OFF);
 
 	if (init)
 	{
@@ -290,6 +313,7 @@ void brew_mash_drain(int init)
 // STEP 7
 void brew_to_boil(int init)
 {
+	brewbotOutput(STIRRER, OFF);
 	brewbotOutput(PUMP, OFF );
 	brewbotOutput(VALVE, OPEN);
 	if (init)
