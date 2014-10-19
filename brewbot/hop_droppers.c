@@ -11,8 +11,20 @@ static struct brew_task hops_task;
 static int servo;
 static int resetting = 0;
 
+
+static int servo;
+static int pos;
+static char dirDown;
+#define MAX_POS 210
+#define MIN_POS 30
+
+
 static void _hops_start(struct brew_task *bt)
 {
+	dirDown = 1;
+	pos = MIN_POS;
+
+	lcd_printf(10, 10, 10, "Starting...");
 }
 
 static void hops_iteration(struct brew_task *bt)
@@ -20,28 +32,38 @@ static void hops_iteration(struct brew_task *bt)
 	if (resetting)
 	{
 		vTaskDelay(1500); // wait for power up
-		brewbotOutput(HOPS1, HOPS_UP);
+		brewbotOutput(HOPS1, 40);
 		vTaskDelay(1500); // wait for the servo to move
 		brewbotOutput(HOPS1, OFF);
-		brewbotOutput(HOPS2, HOPS_UP);
+		brewbotOutput(HOPS2, MIN_POS);
 		vTaskDelay(1500); // wait for the servo to move
 		brewbotOutput(HOPS2, OFF);
-		brewbotOutput(HOPS3, HOPS_UP);
+		brewbotOutput(HOPS3, MIN_POS);
 		vTaskDelay(1500); // wait for the servo to move
 		brewbotOutput(HOPS3, OFF);
+		bt->running = 0;
+		return;
+	}
+
+
+	if (dirDown)
+	{
+		pos++;
+		if (pos >= MAX_POS)
+			dirDown = 0;
 	}
 	else
 	{
-
-		brewbotOutput(HOPS1 + servo, HOPS_DOWN);
-		vTaskDelay(2000); // wait for the current drop to finish to happen
-		brewbotOutput(HOPS1 + servo, HOPS_UP);
-		vTaskDelay(1500); // wait for the servo to move
-		brewbotOutput(HOPS1 + servo, HOPS_DOWN);
-		vTaskDelay(2000); // wait for the current drop to finish to happen
-		brewbotOutput(HOPS1 + servo, OFF); // disable PWM
+		pos--;
+		if (pos <= MIN_POS)
+		{
+			bt->running = 0;
+			brewbotOutput(HOPS1 + servo, OFF); // disable PWM
+			return;
+		}
 	}
-	bt->running = 0;
+	brewbotOutput(HOPS1 + servo, pos);
+	vTaskDelay(10);
 }
 static void _hops_stop(struct brew_task *bt)
 {

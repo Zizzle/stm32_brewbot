@@ -11,7 +11,7 @@ void brewbotOutput(int peripheral, int on)
     TIM_OCInitTypeDef outputChannelInit = {0,};
     TIM_OCStructInit( &outputChannelInit );
     outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
-    outputChannelInit.TIM_Pulse = 0;
+    outputChannelInit.TIM_Pulse = 100;
     outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
     outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_Low;
 
@@ -41,10 +41,7 @@ void brewbotOutput(int peripheral, int on)
 	case HOPS1:
 	case HOPS2:
 	case HOPS3:
-		if (on == HOPS_UP)
-			outputChannelInit.TIM_Pulse = 60;
-		if (on == HOPS_DOWN)
-			outputChannelInit.TIM_Pulse = 200;
+		outputChannelInit.TIM_Pulse = on;
 		if (!on)
 		    outputChannelInit.TIM_OutputState = TIM_OutputState_Disable;
 
