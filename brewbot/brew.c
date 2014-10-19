@@ -211,7 +211,7 @@ void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
 
-	long stir_portion = 3 * g_settings.mash_time / 4;
+	long stir_portion = g_settings.mash_time / 2;
 
 	if (init)
 	{
@@ -270,15 +270,16 @@ void brew_mash_out(int init)
 void brew_mash_drain(int init)
 {
 	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
+	brewbotOutput(PUMP, OFF);
+	brewbotOutput(VALVE, OPEN);
+
 	if (init)
 	{
-		brewbotOutput(PUMP, OFF);
-		brewbotOutput(VALVE, OPEN);
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
 		heat_set_target_temperature(7500);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
-	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time);
+	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time * 60);
 
 	lcd_printf(0, 1, 19, "%.2d:%.2d Elapsed", g_state.step_runtime / 60,
 			g_state.step_runtime % 60);
