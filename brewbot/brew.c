@@ -210,7 +210,7 @@ void brew_mash_stir(int init)
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
-	long stir_portion = g_settings.mash_time * 60 / 3;
+	long stir_portion = 10 * 60;
 
 	if (init)
 	{
@@ -278,7 +278,7 @@ void brew_mash_out(int init)
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(7500);
+		heat_set_target_temperature(8500);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
 	else brew_next_step_if (heat_has_reached_target());
@@ -367,11 +367,11 @@ void brew_boil_hops(int init)
 void brew_finish(int init)
 {
 	static int beep_freq = 100;
+	heat_stop();
 
 	lcd_printf(0, 4, 19, "%.2d:%.2d Since finish", g_state.step_runtime / 60, g_state.step_runtime % 60);
 	if (init)
 	{
-		heat_stop();
 		hops_reset();
 	}
 	else
