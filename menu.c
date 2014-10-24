@@ -136,7 +136,7 @@ static void menu_update(void)
     lcd_fill(0, CRUMB_H, LCD_W, LCD_H - CRUMB_H, bgCol);
 
     // draw the crumbs
-    char crumbs[90] = "Demo2";
+    char crumbs[90] = "Brewbot";
     for (ii = 1; ii <= g_index; ii++)
     {
         strcat(crumbs, ":");
