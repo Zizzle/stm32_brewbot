@@ -11,13 +11,14 @@ void brewbotOutput(int peripheral, int on)
     TIM_OCInitTypeDef outputChannelInit = {0,};
     TIM_OCStructInit( &outputChannelInit );
     outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
-    outputChannelInit.TIM_Pulse = 100;
+    outputChannelInit.TIM_Pulse = 0;
     outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
     outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_Low;
 
 	switch (peripheral)
 	{
 	case SSR:
+		outputChannelInit.TIM_Pulse = 0;
 		if (on)
 			outputChannelInit.TIM_Pulse = on * 20;
 	    TIM_OC1Init(TIM5, &outputChannelInit);
