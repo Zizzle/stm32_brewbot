@@ -46,9 +46,9 @@ void brewbotOutput(int peripheral, int on)
 		    outputChannelInit.TIM_OutputState = TIM_OutputState_Disable;
 
 		if (peripheral == HOPS1)
-			TIM_OC2Init(TIM5, &outputChannelInit);
-		if (peripheral == HOPS2)
 			TIM_OC3Init(TIM5, &outputChannelInit);
+		if (peripheral == HOPS2)
+			TIM_OC2Init(TIM5, &outputChannelInit);
 		if (peripheral == HOPS3)
 			TIM_OC4Init(TIM5, &outputChannelInit);
 		break;

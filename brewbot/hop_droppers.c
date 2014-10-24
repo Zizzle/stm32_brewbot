@@ -23,8 +23,6 @@ static void _hops_start(struct brew_task *bt)
 {
 	dirDown = 1;
 	pos = MIN_POS;
-
-	lcd_printf(10, 10, 10, "Starting...");
 }
 
 static void hops_iteration(struct brew_task *bt)
