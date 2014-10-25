@@ -165,7 +165,7 @@ void brew_fill_and_heat(int init)
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(g_settings.mash_target_temp - 500);
+		heat_set_target_temperature(g_settings.mash_target_temp);
 		heat_set_dutycycle(90);
 	    hops_reset();
 	}
@@ -173,6 +173,18 @@ void brew_fill_and_heat(int init)
 }
 
 // STEP 2
+void brew_liquor_cool(int init)
+{
+	if (init)
+	{
+		heat_set_target_temperature(g_settings.mash_target_temp);
+		heat_set_dutycycle(90);
+	    hops_reset();
+	}
+	else brew_next_step_if(ds1820_get_temperature() < g_settings.mash_target_temp);
+}
+
+// STEP 3
 void brew_mash_in(int init)
 {
 	if (init)
@@ -188,7 +200,7 @@ void brew_mash_in(int init)
 	brew_next_step_if (level_mash_high());
 }
 
-// STEP 3
+// STEP 4
 void brew_mash_stir(int init)
 {
 	if (init)
@@ -206,7 +218,7 @@ void brew_mash_stir(int init)
 }
 
 
-// STEP 4
+// STEP 5
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
@@ -272,7 +284,7 @@ void brew_mash(int init)
 	brew_next_step_if (g_state.step_runtime > g_settings.mash_time * 60);
 }
 
-// STEP 5
+// STEP 6
 void brew_mash_out(int init)
 {
 	if (init)
@@ -288,7 +300,7 @@ void brew_mash_out(int init)
 	brewbotOutput(VALVE, OPEN);
 }
 
-// STEP 6
+// STEP 7
 void brew_mash_drain(int init)
 {
 	long remain = g_settings.mash_out_time * 60 - g_state.step_runtime;
@@ -310,7 +322,7 @@ void brew_mash_drain(int init)
 
 }
 
-// STEP 7
+// STEP 8
 void brew_to_boil(int init)
 {
 	brewbotOutput(STIRRER, OFF);
@@ -325,7 +337,7 @@ void brew_to_boil(int init)
 	else brew_next_step_if (heat_has_reached_target());
 }
 
-// STEP 8
+// STEP 9
 void brew_boil_hops(int init)
 {
 	int ii;
@@ -363,7 +375,7 @@ void brew_boil_hops(int init)
 	brew_next_step_if (remain <= 0);
 }
 
-// STEP 9
+// STEP 10
 void brew_finish(int init)
 {
 	static int beep_freq = 100;
@@ -411,8 +423,9 @@ static struct brew_step g_steps[BREW_STEPS_TOTAL] =
 {
 		{"Delayed Start",      brew_delay_start,     0, NULL},
 		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
+		{"Liquor Cool",        brew_liquor_cool,     0, NULL},
 		{"Mash In",            brew_mash_in,         0, heat_buttons},
-		{"Mash Stir",          brew_mash_stir,         0, heat_buttons},
+		{"Mash Stir",          brew_mash_stir,       0, heat_buttons},
 		{"Mash",               brew_mash,            0, heat_buttons},
 		{"Mash out",           brew_mash_out,        0, NULL},
 		{"Mash drain",         brew_mash_drain,      0, NULL},
