@@ -25,6 +25,19 @@ static void _hops_start(struct brew_task *bt)
 	pos = MIN_POS;
 }
 
+static void bounce()
+{
+	vTaskDelay(1000);
+
+	for (int ii = 0; ii < 10; ii++)
+	{
+		brewbotOutput(HOPS1 + servo, MAX_POS - 50);
+		vTaskDelay(300);
+		brewbotOutput(HOPS1 + servo, MAX_POS);
+		vTaskDelay(300);
+	}
+}
+
 static void hops_iteration(struct brew_task *bt)
 {
 	if (resetting)
@@ -48,7 +61,10 @@ static void hops_iteration(struct brew_task *bt)
 	{
 		pos++;
 		if (pos >= MAX_POS)
+		{
+			bounce();
 			dirDown = 0;
+		}
 	}
 	else
 	{
@@ -63,6 +79,7 @@ static void hops_iteration(struct brew_task *bt)
 	brewbotOutput(HOPS1 + servo, pos);
 	vTaskDelay(10);
 }
+
 static void _hops_stop(struct brew_task *bt)
 {
 }
@@ -71,7 +88,7 @@ static void _hops_stop(struct brew_task *bt)
 void hops_start_task()
 {
 	startBrewTask(&hops_task,
-			"Hops", 200, 2, 10000,
+			"Hops", 200, 2, 20000,
 			_hops_start,
 			hops_iteration,
 			_hops_stop);
@@ -103,6 +120,9 @@ void hops_stop()
 
 void hops_reset()
 {
+	while (hops_are_dropping())
+		vTaskDelay(100); // wait for the current drop to finish to happen
+
 	resetting = 1;
 	brewTaskStart(&hops_task, NULL);
 }
