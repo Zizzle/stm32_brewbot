@@ -44,8 +44,8 @@ struct brew_step
 	int timeout;
 	struct button *buttons;
 };
-#define BREW_STEPS_TOTAL 10
-static struct brew_step g_steps[BREW_STEPS_TOTAL];
+static struct brew_step g_steps[];
+static int brew_get_steps_count();
 
 #define MASH_FILLING 0
 #define MASH_STIRRING 1
@@ -76,7 +76,7 @@ static struct button brew_buttons[] =
 
 static const char *brew_step_name(unsigned char step)
 {
-	if (step < BREW_STEPS_TOTAL)
+	if (step < brew_get_steps_count())
 		return g_steps[step].name;
 	return "Unknown";
 }
@@ -110,7 +110,7 @@ static void brew_run_step()
 
 static void brew_next_step()
 {
-	if (g_state.step >= BREW_STEPS_TOTAL)
+	if (g_state.step >= brew_get_steps_count())
 	{
 		return;
 	}
@@ -311,7 +311,7 @@ void brew_mash_drain(int init)
 	if (init)
 	{
 		heat_start(brew_error_handler, BREW_LOG_PATH, g_state.brew_number);
-		heat_set_target_temperature(7500);
+		heat_set_target_temperature(8500);
 		heat_set_dutycycle(g_settings.boil_duty_cycle);
 	}
 	else brew_next_step_if (g_state.step_runtime > g_settings.mash_out_time * 60);
@@ -378,20 +378,9 @@ void brew_boil_hops(int init)
 // STEP 10
 void brew_finish(int init)
 {
-	static int beep_freq = 100;
 	heat_stop();
 
 	lcd_printf(0, 4, 19, "%.2d:%.2d Since finish", g_state.step_runtime / 60, g_state.step_runtime % 60);
-	if (init)
-	{
-		hops_reset();
-	}
-	else
-	{
-// FIXME		audio_beep(beep_freq, 400);
-		if ((beep_freq += 10) > 3000)
-			beep_freq = 100;
-	}
 }
 
 void brew_duty_plus(char button_down)
@@ -419,7 +408,7 @@ static struct button heat_buttons[] =
 };
 
 
-static struct brew_step g_steps[BREW_STEPS_TOTAL] = 
+static struct brew_step g_steps[] =
 {
 		{"Delayed Start",      brew_delay_start,     0, NULL},
 		{"Fill & Heat",        brew_fill_and_heat,   0, NULL},
@@ -451,7 +440,7 @@ void brew_iterate_cb(brew_task_t *bt)
 
 	// display the total run time
 	lcd_background(COL_BG_NORM);
-	if (g_state.step != BREW_STEPS_TOTAL - 1)
+	if (g_state.step != brew_get_steps_count() - 1)
 		lcd_printf(20, 2, 5, "%.2d:%.2d", g_state.total_runtime / 60, g_state.total_runtime % 60);
 }
 
@@ -522,7 +511,7 @@ void brew_resume_next(char button_down)
 {
 	if (button_down) return;
 	
-    if (g_state.step < BREW_STEPS_TOTAL - 1)
+    if (g_state.step < brew_get_steps_count() - 1)
         g_state.step++;
 
 	lcd_background(COL_BG_NORM);
@@ -577,3 +566,7 @@ int brew_resume_touch(int xx, int yy)
 	return button_touch(resume_buttons, xx, yy);
 }
 
+static int brew_get_steps_count()
+{
+	return sizeof(g_steps) / sizeof(struct brew_step);
+}

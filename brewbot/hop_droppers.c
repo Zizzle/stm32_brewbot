@@ -109,6 +109,7 @@ void hops_drop(short dropper, void (*taskErrorHandler)(brew_task_t *))
 
 	servo = dropper;
 	resetting = 0;
+	hops_task.running = 1; // just so hops_are_dropping() returns true right away
 
 	brewTaskStart(&hops_task, taskErrorHandler);
 }
