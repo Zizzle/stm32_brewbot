@@ -50,6 +50,7 @@ static int brew_get_steps_count();
 #define MASH_FILLING 0
 #define MASH_STIRRING 1
 #define MASH_DRAINING 2
+#define MASH_HOLD 3
 
 static struct state
 {
@@ -64,6 +65,7 @@ static struct state
 
 	int          mash_state;
 	long         stir_start;
+	long         mash_hold_start;
 	uint8_t      hop_addition_done[MAX_HOP_ADDITIONS];
 	FIL          log_file;
 } g_state = { 0, 0, 0, 0};
@@ -222,7 +224,8 @@ void brew_mash_stir(int init)
 void brew_mash(int init)
 {
 	long remain = g_settings.mash_time * 60 - g_state.step_runtime;
-	long stir_portion = 10 * 60;
+	long stir_portion = 20 * 60;
+	long mash_hold_time = 8 * 60;
 
 	if (init)
 	{
@@ -241,6 +244,7 @@ void brew_mash(int init)
 					g_state.mash_state = MASH_FILLING;
 					brewbotOutput(VALVE, OFF);
 					brewbotOutput(STIRRER, OFF);
+					brewbotOutput(PUMP, ON);
 				}
 			}
 			else if (g_state.mash_state == MASH_FILLING)
@@ -256,9 +260,11 @@ void brew_mash(int init)
 					}
 					else
 					{
-						g_state.mash_state = MASH_DRAINING;
-						brewbotOutput(VALVE, ON);
+						g_state.mash_hold_start = g_state.step_runtime;
+						g_state.mash_state = MASH_HOLD;
 						brewbotOutput(STIRRER, OFF);
+						brewbotOutput(PUMP, OFF);
+						brewbotOutput(VALVE, OFF);
 					}
 				}
 			}
@@ -266,9 +272,20 @@ void brew_mash(int init)
 			{
 				if (g_state.step_runtime - g_state.stir_start > 20)
 				{
+					g_state.mash_hold_start = g_state.step_runtime;
+					g_state.mash_state = MASH_HOLD;
+					brewbotOutput(STIRRER, OFF);
+					brewbotOutput(PUMP, OFF);
+					brewbotOutput(VALVE, OFF);
+				}
+			}
+			else if (g_state.mash_state == MASH_HOLD)
+			{
+				if (g_state.step_runtime - g_state.mash_hold_start > mash_hold_time)
+				{
 					g_state.mash_state = MASH_DRAINING;
 					brewbotOutput(STIRRER, OFF);
-					brewbotOutput(PUMP, ON);
+					brewbotOutput(PUMP, OFF);
 					brewbotOutput(VALVE, ON);
 				}
 			}
@@ -416,7 +433,7 @@ static struct brew_step g_steps[] =
 		{"Mash In",            brew_mash_in,         0, heat_buttons},
 		{"Mash Stir",          brew_mash_stir,       0, heat_buttons},
 		{"Mash",               brew_mash,            0, heat_buttons},
-		{"Mash out",           brew_mash_out,        0, NULL},
+		{"Mash out",           brew_mash_out,        0, heat_buttons},
 		{"Mash drain",         brew_mash_drain,      0, NULL},
 		{"Bring to boil",      brew_to_boil,         0, heat_buttons},
 		{"Boil & Hops",        brew_boil_hops,       0, heat_buttons},
