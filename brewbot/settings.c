@@ -68,9 +68,9 @@ void settings_load()
 		g_settings.mash_out_time     = 15;
 		g_settings.boil_time         = 60;
 		g_settings.mash_duty_cycle   = 30;
-		g_settings.boil_duty_cycle   = 50;
+		g_settings.boil_duty_cycle   = 65;
 		g_settings.hop_addition[0]   = 60;
-		g_settings.hop_addition[1]   = 40;
+		g_settings.hop_addition[1]   = 15;
 		g_settings.hop_addition[2]   = 0;
 		g_settings.hop_addition[3]   = 0;
 		g_settings.hop_addition[4]   = 0;
